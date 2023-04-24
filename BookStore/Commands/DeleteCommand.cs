@@ -9,24 +9,16 @@ namespace BookStore.Commands;
 
 [Command("delete")]
 [Description("Delete selected book to the database")]
-public class DeleteCommand :ICommand
+public class DeleteCommand : ICommand
 {
-
-    [CommandLineArgument(argumentName:"id",IsRequired = true)]
+    [CommandLineArgument("id", IsRequired = true)]
     [Description("The id of the book.")]
     public string? Id { get; set; }
-    
+
     public int Run()
     {
         // get list
-        var books = new List<Book>();
-
-        if (File.Exists(Database.Path))
-        {
-            var data = File.ReadAllText(Database.Path);
-            var deserialize = JsonSerializer.Deserialize<List<Book>>(data);
-            if (deserialize != null) books = deserialize;
-        }
+        var books = Database.GetAll();
 
         //get the index of existing item with id
         var index = books.FindIndex(b => b.Id == Id);
@@ -35,8 +27,7 @@ public class DeleteCommand :ICommand
         books.RemoveAt(index);
 
         // save all the books
-        var json = JsonSerializer.Serialize(books);
-        File.WriteAllText(Database.Path, json);
+        Database.Save(books);
 
         AnsiConsole.WriteLine($"The book with id {Id} was successfully deleted");
         return 0;

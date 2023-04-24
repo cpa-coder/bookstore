@@ -24,19 +24,12 @@ public class AddCommand : ICommand
         var book = new Book
         {
             Id = Guid.NewGuid().ToString(),
-            Author = Author,
-            Title = Title
+            Author = Author!,
+            Title = Title!
         };
 
         // get list
-        var books = new List<Book>();
-
-        if (File.Exists(Database.Path))
-        {
-            var data = File.ReadAllText(Database.Path);
-            var deserialize = JsonSerializer.Deserialize<List<Book>>(data);
-            if (deserialize != null) books = deserialize;
-        }
+        var books = Database.GetAll();
 
         //check if title already exists
         var titleExists = books.Any(b => b.Title.ToLower() == book.Title!.ToLower());
@@ -50,8 +43,7 @@ public class AddCommand : ICommand
         books.Add(book);
 
         // save all the books
-        var json = JsonSerializer.Serialize(books);
-        File.WriteAllText(Database.Path, json);
+        Database.Save(books);
 
         AnsiConsole.WriteLine($"The book was successfully added with id {book.Id}");
         return 0;

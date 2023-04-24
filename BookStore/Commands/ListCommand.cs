@@ -1,5 +1,4 @@
 ﻿using System.ComponentModel;
-using System.Text.Json;
 using BookStore.Models;
 using Ookii.CommandLine;
 using Ookii.CommandLine.Commands;
@@ -24,14 +23,7 @@ public class ListCommand : ICommand
         }
 
         // get list
-        var books = new List<Book>();
-
-        if (File.Exists(Database.Path))
-        {
-            var data = File.ReadAllText(Database.Path);
-            var deserialize = JsonSerializer.Deserialize<List<Book>>(data);
-            if (deserialize != null) books = deserialize;
-        }
+        var books = Database.GetAll();
 
         if (books.Count == 0)
         {
