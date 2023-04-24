@@ -1,35 +1,65 @@
-﻿using System.Text.Json;
+﻿using System.ComponentModel;
+using System.Text.Json;
 using BookStore.Models;
-using BookStore.Options;
+using Ookii.CommandLine;
+using Ookii.CommandLine.Commands;
+using Spectre.Console;
 
 namespace BookStore.Commands;
 
-public class ListCommand : CommandBase<Result<List<Book>>, ListOptions>
+[Command("list")]
+[Description("Show the list of books from the database")]
+public class ListCommand : ICommand
 {
-    private readonly string _db;
+    [CommandLineArgument("sort", ShortName = 's', IsRequired = false, DefaultValue = "desc")]
+    [Description("How the list should be sorted.")]
+    public string? Sort { get; set; }
 
-    public ListCommand(string db)
+    public int Run()
     {
-        _db = db;
-    }
-
-    public override Result<List<Book>> Execute(string[] args)
-    {
-        base.Execute(args);
+        if (Sort != "asc" && Sort != "desc")
+        {
+            AnsiConsole.MarkupLine("[red]Invalid sort option. Use [bold]asc[/] or [bold]desc[/][/]");
+            return 1;
+        }
 
         // get list
         var books = new List<Book>();
 
-        if (File.Exists(_db))
+        if (File.Exists(Database.Path))
         {
-            var data = File.ReadAllText(_db);
+            var data = File.ReadAllText(Database.Path);
             var deserialize = JsonSerializer.Deserialize<List<Book>>(data);
             if (deserialize != null) books = deserialize;
         }
 
-        if (Options!.Sort == Sort.Ascending)
-            return new Result<List<Book>> { Output = books.OrderBy(x => x.Title).ToList() };
+        if (books.Count == 0)
+        {
+            AnsiConsole.MarkupLine("[green]No books found in the database.[/]");
+            return 0;
+        }
 
-        return new Result<List<Book>> { Output = books.OrderByDescending(x => x.Title).ToList() };
+        switch (Sort)
+        {
+            case "asc":
+                ShowTable(books.OrderBy(x => x.Title).ToList());
+                break;
+            case "desc":
+                ShowTable(books.OrderByDescending(x => x.Title).ToList());
+                break;
+        }
+
+        return 0;
+    }
+
+    private void ShowTable(List<Book> books)
+    {
+        var table = new Table();
+        table.Border(TableBorder.Rounded);
+        table.AddColumns(new TableColumn("id"), new TableColumn("title"), new TableColumn("author"));
+
+        foreach (var book in books) table.AddRow(book.Id, book.Title, book.Author);
+
+        AnsiConsole.Write(table);
     }
 }

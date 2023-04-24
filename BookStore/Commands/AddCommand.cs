@@ -1,37 +1,49 @@
-﻿using System.Text.Json;
+﻿using System.ComponentModel;
+using System.Text.Json;
 using BookStore.Models;
-using BookStore.Options;
+using Ookii.CommandLine;
+using Ookii.CommandLine.Commands;
+using Spectre.Console;
 
 namespace BookStore.Commands;
 
-public class AddCommand : CommandBase<Result<Book>, AddOptions>
+[Command("add")]
+[Description("Add a new book to the database")]
+public class AddCommand : ICommand
 {
-    private readonly string _db;
+    [CommandLineArgument("author", ShortName = 'a', IsRequired = true)]
+    [Description("The author of the book.")]
+    public string? Author { get; set; }
 
-    public AddCommand(string db)
+    [CommandLineArgument("title", ShortName = 't', IsRequired = true)]
+    [Description("The title of the book.")]
+    public string? Title { get; set; }
+
+    public int Run()
     {
-        _db = db;
-    }
-
-    public override Result<Book> Execute(string[] args)
-    {
-        base.Execute(args);
-
         var book = new Book
         {
             Id = Guid.NewGuid().ToString(),
-            Author = Options!.Author,
-            Title = Options.Title,
+            Author = Author,
+            Title = Title
         };
 
         // get list
         var books = new List<Book>();
 
-        if (File.Exists(_db))
+        if (File.Exists(Database.Path))
         {
-            var data = File.ReadAllText(_db);
+            var data = File.ReadAllText(Database.Path);
             var deserialize = JsonSerializer.Deserialize<List<Book>>(data);
             if (deserialize != null) books = deserialize;
+        }
+
+        //check if title already exists
+        var titleExists = books.Any(b => b.Title.ToLower() == book.Title!.ToLower());
+        if (titleExists)
+        {
+            AnsiConsole.MarkupLine($"[red]The book with title \"{book.Title}\" already exists[/]");
+            return 1;
         }
 
         // add new item to the list
@@ -39,8 +51,9 @@ public class AddCommand : CommandBase<Result<Book>, AddOptions>
 
         // save all the books
         var json = JsonSerializer.Serialize(books);
-        File.WriteAllText(_db, json);
+        File.WriteAllText(Database.Path, json);
 
-        return new Result<Book>(message: $"The book was successfully added with id {book.Id}");
+        AnsiConsole.WriteLine($"The book was successfully added with id {book.Id}");
+        return 0;
     }
 }

@@ -1,43 +1,44 @@
-﻿using System.Text.Json;
+﻿using System.ComponentModel;
+using System.Text.Json;
 using BookStore.Models;
-using BookStore.Options;
-using CommandLine;
+using Ookii.CommandLine;
+using Ookii.CommandLine.Commands;
+using Spectre.Console;
 
 namespace BookStore.Commands;
 
-public class DeleteCommand : CommandBase<Result<Book>, DeleteOptions>
+[Command("delete")]
+[Description("Delete selected book to the database")]
+public class DeleteCommand :ICommand
 {
-    private readonly string _db;
 
-    public DeleteCommand(string db)
+    [CommandLineArgument(argumentName:"id",IsRequired = true)]
+    [Description("The id of the book.")]
+    public string? Id { get; set; }
+    
+    public int Run()
     {
-        _db = db;
-    }
-
-    public override Result<Book> Execute(string[] args)
-    {
-        base.Execute(args);
-
         // get list
         var books = new List<Book>();
 
-        if (File.Exists(_db))
+        if (File.Exists(Database.Path))
         {
-            var data = File.ReadAllText(_db);
+            var data = File.ReadAllText(Database.Path);
             var deserialize = JsonSerializer.Deserialize<List<Book>>(data);
             if (deserialize != null) books = deserialize;
         }
 
         //get the index of existing item with id
-        var index = books.FindIndex(b => b.Id == Options!.Id);
+        var index = books.FindIndex(b => b.Id == Id);
 
         //remove the item on index
         books.RemoveAt(index);
 
         // save all the books
         var json = JsonSerializer.Serialize(books);
-        File.WriteAllText(_db, json);
+        File.WriteAllText(Database.Path, json);
 
-        return new Result<Book>(message: $"The book was successfully deleted with id {Options!.Id}");
+        AnsiConsole.WriteLine($"The book with id {Id} was successfully deleted");
+        return 0;
     }
 }
